@@ -1,7 +1,15 @@
 import random
-import numpy as np
 import cv2
 import glob
+import pytesseract
+import os
+import numpy as np
+
+
+def using_tesseract():
+    if (os.name) == "nt":
+        pytesseract.pytesseract.tesseract_cmd = r'C:\Users\shahr\anaconda3\envs\tesseract\Library\bin\tesseract.exe'
+    return pytesseract.pytesseract.tesseract_cmd
 
 
 def find_digit_path():
@@ -22,15 +30,19 @@ files = find_digit_path()
 
 
 def choose_random_images():
+    img=[]
     for i in range(0, 10):
+        number=[i for i in range(0,10)]
         img = [random.choice(file) for file in files]
-    return img
+
+    return img,number
 
 
-# print(img)
+
 # for im in img:
 # imgs.append(cv2.imread(im))
-img = choose_random_images()
+img,number = choose_random_images()
+#print(name)
 
 
 def read_images():
@@ -45,9 +57,9 @@ def read_divider():
     div.append(slash)
     div.append(space)
     divider = [cv2.imread(d) for d in div]
-    for d in divider:
-        cv2.imshow('d',d)
-        cv2.waitKey(0)
+    # for d in divider:
+    # cv2.imshow('d', d)
+    # cv2.waitKey(0)
     return divider
 
 
@@ -60,6 +72,8 @@ def create_day():
     :return:
     """
     day = []
+    name = []
+    dName = dict()
     for i in range(0, 4):
         day1 = imgs[i]
         if i == 0:
@@ -78,13 +92,18 @@ def create_day():
             # print(fullDay)
             # cv2.imshow('r', fullDay)
             # cv2.waitKey(0)
-            dName = str(i) + str(j)
+            n = str(i) + str(j)
+            name.append(n)
+            dName = dict(zip(name, day))
+    # print(dName)
 
     return day, dName
 
 
 def create_month():
     month = []
+    name = []
+    mName = []
     for m in range(0, 2):
         month1 = imgs[m]
 
@@ -100,13 +119,16 @@ def create_month():
             # cv2.imshow('r',fullMonth)
             # cv2.waitKey(0)
             month.append(fullMonth)
-            mName = str(m) + str(j)
+            name.append(str(m) + str(j))
+            mName = dict(zip(name, month))
+    # print(mName)
 
     return month, mName
 
 
 def create_year():
     year = []
+    name = []
     # create year
     y1 = imgs[2]
     for j in range(0, 10):
@@ -124,7 +146,9 @@ def create_year():
                 # cv2.imshow('r', fullYear)
                 # cv2.waitKey(0)
                 year.append((fullYear))
-                yName = '2' + str(j) + str(k) + str(x)
+                name.append('2' + str(j) + str(k) + str(x))
+                yName = dict(zip(name, year))
+    # print(yName)
     return year, yName
 
 
@@ -136,22 +160,35 @@ div = read_divider()
 
 def create_date():
     date = []
-    for i in range(1000):
+    name = []
+    for i in range(0, 5):
         white = [255, 255, 255]
-        d = random.choice(day)
-        m = random.choice(month)
-        y = random.choice(year)
+        d = random.choice(list(dName.items()))
+        dN = d[0]  # name
+        dV = d[1]  # day image
+
+        m = random.choice(list(mName.items()))
+        mN = m[0]
+        mV = m[1]
+        y = random.choice(list(yName.items()))
+        yN = y[0]
+        yV = y[1]
+
         divider = random.choice(div)
-        dd = cv2.hconcat([d, divider])
-        mm = cv2.hconcat([m, divider])
+
+        dd = cv2.hconcat([dV, divider])
+        mm = cv2.hconcat([mV, divider])
         dm = cv2.hconcat([dd, mm])
-        fullDate = cv2.hconcat([dm, y])
+        fullDate = cv2.hconcat([dm, yV])
         image = cv2.copyMakeBorder(fullDate, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=white)
-        cv2.imshow('f', fullDate)
-        cv2.waitKey(0)
+        # cv2.imshow('f', fullDate)
+        # cv2.waitKey(0)
         date.append(image)
-    print(len(date))
-    return date
+        name = (dN + mN + yN)
+        print(name)
+    # print(dateName)
+
+    return date, name
 
 
 '''''
@@ -164,9 +201,33 @@ name = f'{dName}{separator}{mName}{separator}{yName}'
 print([day, month,year])
 #print(name)
 '''''
-data = create_date()
+data, name = create_date()
 # imageF=create_date()
 # cv2.imshow('r', imageF)
 # cv2.waitKey(0)
-#print(type(dataaaa))
+# print(type(dataaaa))
 
+pytesseract.pytesseract.tesseract_cmd = using_tesseract()
+
+
+def reading_dates():
+    conf = " -c tessedit_create_boxfile=1"
+    date = []
+    for d in data:
+        d = cv2.cvtColor(d, cv2.COLOR_BGR2RGB)
+        imgh, imgw, _ = d.shape
+        boxes = pytesseract.image_to_boxes(d, config=conf)
+        print(boxes)
+        for b in boxes.splitlines():
+            b = b.split(' ')
+            #print(b)
+            x, y, h, w = int(b[1]), int(b[2]), int(b[3]), int(b[4])
+            img = cv2.rectangle(d, (x, imgh - y), (h, imgh - w), (0, 255, 0), 2)
+            cv2.putText(d, b[0], (x, imgh - y + 15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 1)
+
+        cv2.imshow('Resualt', d)
+        cv2.waitKey(0)
+    return d
+
+
+read = reading_dates()
