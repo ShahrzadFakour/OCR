@@ -5,10 +5,9 @@ import random
 
 def find_digit_path():
     """
-
-    :return:
+    this method puts all images of directory in a list
     """
-    path = r'C:\Users\shahr\Downloads\archive\EXP_10'
+    path = r'C:\Users\shahr\Downloads\myData'
     files = []
     for i in range(0, 10):
         digit = glob.glob(path + '/' + str(i) + '/*.png', recursive=True)
@@ -19,11 +18,10 @@ def find_digit_path():
 # List of list containing for each index, a list of images of the digits equals to the index name
 FILES = find_digit_path()
 
-
+#print(FILES[1])
 def read_divider():
     """
-
-    :return:
+    reads our dividers and returns the list of dividers
     """
     slash = r'C:\Users\shahr\Downloads\slash.png'
     space = r'C:\Users\shahr\Downloads\space.png'
@@ -39,14 +37,15 @@ def read_divider():
 
 def create_day():
     """
-    Return an image from 1 to 31 and its name
-    :return:
+    Returns an image from 1 to 31 and its name
+
     """
     day = []
     name = []
     dName = dict()
     imgs = [cv2.imread(random.choice(file)) for file in FILES]
     for i in range(0, 4):
+
         day1 = imgs[i]
         if i == 0:
             start = 1
@@ -66,13 +65,17 @@ def create_day():
             # cv2.waitKey(0)
             n = str(i) + str(j)
             name.append(n)
-            dName = dict(zip(name, day))
+            dName = dict(zip(name, day))    # create a dictionary in which names are keys and the images are values
     # print(dName)
 
     return day, dName
 
-
+day,dName=create_day()
+print(dName)
 def create_month():
+    """
+    Returns an image of numbers from 1 to 12 for each month with its name
+    """
     month = []
     name = []
     mName = []
@@ -93,13 +96,16 @@ def create_month():
             # cv2.waitKey(0)
             month.append(fullMonth)
             name.append(str(m) + str(j))
-            mName = dict(zip(name, month))
+            mName = dict(zip(name, month))  # create a dictionary in which names are keys and the images are values
     # print(mName)
 
     return month, mName
 
 
 def create_year():
+    """
+    Returns a list of years from 2020
+    """
     year = []
     name = []
     # create year
@@ -121,12 +127,15 @@ def create_year():
                 # cv2.waitKey(0)
                 year.append((fullYear))
                 name.append('2' + str(j) + str(k) + str(x))
-                yName = dict(zip(name, year))
+                yName = dict(zip(name, year))  # create a dictionary in which names are keys and the images are values
     # print(yName)
     return year, yName
 
 
 def create_date():
+    """
+     using output of previous methods, returns an image that demonstrates a complete date
+    """
     day, dName = create_day()
     month, mName = create_month()
     year, yName = create_year()
@@ -134,15 +143,18 @@ def create_date():
 
     white = [255, 255, 255]
     d = random.choice(list(dName.items()))
-    dN = d[0]  # name
-    dV = d[1]  # day image
+    dN = d[0]  # name of day
+    dV = d[1]  # image of day
+    dV=cv2.resize(dV,(64,32))
 
     m = random.choice(list(mName.items()))
-    mN = m[0]
-    mV = m[1]
+    mN = m[0]  # name of month
+    mV = m[1]  # image of month
+    mV=cv2.resize(mV,(64,32))
     y = random.choice(list(yName.items()))
-    yN = y[0]
-    yV = y[1]
+    yN = y[0]  # name of year
+    yV = y[1]  # image of year
+    yV= cv2.resize(yV,(128,32))
 
     divider = random.choice(div)
 
@@ -150,10 +162,10 @@ def create_date():
     mm = cv2.hconcat([mV, divider])
     dm = cv2.hconcat([dd, mm])
     fullDate = cv2.hconcat([dm, yV])
-    date = cv2.copyMakeBorder(fullDate, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=white)
-    cv2.imshow('f', date)
+    date = cv2.copyMakeBorder(fullDate, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=white)  # create a board for date
+    cv2.imshow('fullDay', date)
     cv2.waitKey(0)
-    name = (dN + mN + yN)
+    name = (dN + mN + yN)  # create the name of date that contains names of day,month and year
     print(name)
     # print(dateName)
 
