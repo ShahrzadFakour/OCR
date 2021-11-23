@@ -7,8 +7,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import confusion_matrix
 from keras.preprocessing.image import ImageDataGenerator
+from keras.utils.np_utils import to_categorical
 import joblib
-
+import cv2
 # %matplotlib inline
 
 # Set random state
@@ -29,21 +30,30 @@ def load_data():
 
     train_labels = train_raw['y']
     test_labels = test_raw['y']
+
+    # Check the shape of the data
+
+    print(train_images.shape)
+    print(test_images.shape)
     return train_images, train_labels, test_images, test_labels
 
 
-def modify_data():
+def modify_dataset():
     train_images, train_labels, test_images, test_labels = load_data()
-    # Check the shape of the data
-    # print(train_images.shape)
-    # print(test_images.shape)
-
     # Fix the axes of the images
     train_images = np.moveaxis(train_images, -1, 0)
     test_images = np.moveaxis(test_images, -1, 0)
 
-    # print(train_images.shape)
-    # print(test_images.shape)
+    print(train_images.shape)
+    print(test_images.shape)
+
+    # Plot a random image and its label
+
+    # plt.imshow(train_images[10529])
+    # plt.show()
+
+    # print('Label: ', train_labels[10529])
+
     # Convert train and test images into 'float64' type
 
     train_images = train_images.astype('float64')
@@ -56,41 +66,29 @@ def modify_data():
     return train_images, train_labels, test_images, test_labels
 
 
-'''''
-# Plot a random image and its label
-
-plt.imshow(train_images[10529])
-plt.show()
-
-print('Label: ', train_labels[10529])
-'''
-
-
 def normalize():
-    train_images, train_labels, test_images, test_labels = modify_data()
+    train_images, train_labels, test_images, test_labels = modify_dataset()
     # Normalize the images data
 
     print('Min: {}, Max: {}'.format(train_images.min(), train_images.max()))
 
     train_images /= 255.0
     test_images /= 255.0
-
-    # One-hot encoding of train and test labels
-    lb = LabelBinarizer()
-    train_labels = lb.fit_transform(train_labels)
-    test_labels = lb.fit_transform(test_labels)
     return train_images, train_labels, test_images, test_labels
 
 
 def splitting_data():
     train_images, train_labels, test_images, test_labels = normalize()
-
+    lb = LabelBinarizer()
+    train_labels = lb.fit_transform(train_labels)
+    test_labels = lb.fit_transform(test_labels)
     # Split train data into train and validation sets
+
     X_train, X_val, y_train, y_val = train_test_split(train_images, train_labels,
                                                       test_size=0.15, random_state=22)
-    y_val.shape
 
-    return X_train, X_val, y_train, y_val, train_images, train_labels, test_images, test_labels
+    y_val.shape
+    return X_train, X_val, y_train, y_val,test_labels
 
 
 def data_augmentation():
@@ -103,11 +101,11 @@ def data_augmentation():
     return datagen
 
 
-# Define actual model
 def create_model():
+    # Define actual model
+
     keras.backend.clear_session()
-    datagen = data_augmentation()
-    X_train, X_val, y_train, y_val, train_images, train_labels, test_images, test_labels = splitting_data()
+
     model = keras.Sequential([
         keras.layers.Conv2D(32, (3, 3), padding='same',
                             activation='relu',
@@ -140,35 +138,43 @@ def create_model():
         keras.layers.Dense(10, activation='softmax')
     ])
 
-    early_stopping = keras.callbacks.EarlyStopping(patience=8)
     optimizer = keras.optimizers.Adam(lr=1e-3, amsgrad=True)
-    model_checkpoint = keras.callbacks.ModelCheckpoint(
-        '/kaggle/working/best_cnn.h5',
-        save_best_only=True)
     model.compile(optimizer=optimizer,
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
-
     model.summary()
 
+    return model
+
+
+# model=create_model()
+
+def prediction():
     # Fit model in order to make predictions
+    train_images, train_labels, test_images, test_labels = normalize()
+
+    lb = LabelBinarizer()
+    train_labels = lb.fit_transform(train_labels)
+    test_labels = lb.fit_transform(test_labels)
+    print(train_labels.shape,'train')
+    print(test_labels.shape, 'test')
+
+    X_train, X_val, y_train, y_val,test_labels = splitting_data()
+    datagen = data_augmentation()
+    model = create_model()
+    print(y_train.shape,'y_train')
+    print(test_labels.shape,'test labels')
+    early_stopping = keras.callbacks.EarlyStopping(patience=8)
+    model_checkpoint = keras.callbacks.ModelCheckpoint(
+        '/kaggle/working/best_cnn.h5',
+        save_best_only=True)
 
     history = model.fit_generator(datagen.flow(X_train, y_train, batch_size=128),
-                                  epochs=1, validation_data=(X_val, y_val),
+                                  epochs=10, validation_data=(X_val, y_val),
                                   callbacks=[early_stopping, model_checkpoint])
-    return model, history
-
-
-def save_model():
-    model, history = create_model()
-    filename = 'CNN_model.sav'
-    save=joblib.dump(model, filename)
-    return save
-
-
-def evaluate_model():
-    X_train, X_val, y_train, y_val, train_images, train_labels, test_images, test_labels = splitting_data()
-    model, history = create_model()
+    # save the model to disk
+    #filename = 'finalized_model.sav'
+    #joblib.dump(history, filename)
     # Evaluate train and validation accuracies and losses
 
     train_acc = history.history['accuracy']
@@ -193,65 +199,65 @@ def evaluate_model():
     plt.legend()
     plt.title('Epochs vs. Training and Validation Loss')
 
-    # plt.show()
-
+    #plt.show()
+    plt.savefig('Loss&Accuracy.png')
     # Evaluate model on test data
     test_loss, test_acc = model.evaluate(x=test_images, y=test_labels, verbose=0)
 
     print('Test accuracy is: {:0.4f} \nTest loss is: {:0.4f}'.
           format(test_acc, test_loss))
-    # Get predictions and apply inverse transformation to the labels
-    lb = LabelBinarizer()
-    train_labels = lb.fit_transform(train_labels)
-    test_labels = lb.fit_transform(test_labels)
-    y_pred = model.predict(X_train)
 
-    # print(lb.classes_)
+    # Get predictions and apply inverse transformation to the labels
+
+    y_pred = model.predict(X_train)
     y_pred = lb.inverse_transform(y_pred, lb.classes_)
     y_train = lb.inverse_transform(y_train, lb.classes_)
-    print(y_pred)
-    print(y_train)
-    return y_pred, y_train
 
-
-def create_confusion_matrix():
-    _, _, _, _, _, train_labels, _, test_labels = splitting_data()
-
+    test_pred = model.predict(test_images)
+    test_pred = lb.inverse_transform(test_pred, lb.classes_)
+    test_labels = lb.inverse_transform(test_labels, lb.classes_)
     # Plot the confusion matrix
-    y_pred, y_train = evaluate_model()
-    # lb = LabelBinarizer()
-    lb = LabelBinarizer()
-    train_labels = lb.fit_transform(train_labels)
-    test_labels = lb.fit_transform(test_labels)
-    print(lb.classes_)
-    # matrix = confusion_matrix(y_train, y_pred, labels=lb.classes_)
-    print(y_pred)
-    print(y_train)
-    matrix = confusion_matrix(y_train.argmax(axis=1), y_pred.argmax(axis=1), labels=lb.classes_)
-    print(matrix)
+    print(y_pred,'y_pred')
+    print(y_train,'y_train')
+    print(test_pred,'test pred')
+    print(test_labels,'test label')
+    plt.figure(figsize=(20, 10))
+
+    plt.subplot(1, 2, 1)
+    plt.plot(train_acc, label='Training Accuracy')
+    plt.plot(val_acc, label='Validation Accuracy')
+    plt.legend()
+    plt.title('Epochs vs. Training and Validation Accuracy')
+
+    plt.subplot(1, 2, 2)
+    plt.plot(train_loss, label='Training Loss')
+    plt.plot(val_loss, label='Validation Loss')
+    plt.legend()
+    plt.title('Epochs vs. Training and Validation Loss')
+
+    #plt.show()
+    plt.savefig('Loss&Accuracy.png')
+    matrix1 = confusion_matrix(y_train, y_pred, labels=lb.classes_)
 
     fig, ax = plt.subplots(figsize=(14, 12))
-    sns.heatmap(matrix, annot=True, cmap='Greens', fmt='d', ax=ax)
+    sns.heatmap(matrix1, annot=True, cmap='Greens', fmt='d', ax=ax)
     plt.title('Confusion Matrix for training dataset')
     plt.xlabel('Predicted label')
     plt.ylabel('True label')
-    plt.show()
-    return plt
+    #plt.show()
+    plt.savefig('CM_train.png')
+    #print(test_labels)
+    matrix2 = confusion_matrix(test_labels, test_pred, labels=lb.classes_)
+
+    fig, ax = plt.subplots(figsize=(14, 12))
+    sns.heatmap(matrix2, annot=True, cmap='Blues', fmt='d', ax=ax)
+    plt.title('Confusion Matrix for test dataset')
+    plt.xlabel('Predicted label')
+    plt.ylabel('True label')
+    #plt.show()
+    plt.savefig('CM_test.png')
+
+    return matrix1, matrix2, history
 
 
-plt = create_confusion_matrix()
-'''''
-# Get convolutional layers
-
-layers = [model.get_layer('conv2d_1'),
-          model.get_layer('conv2d_2'),
-          model.get_layer('conv2d_3'),
-          model.get_layer('conv2d_4'),
-          model.get_layer('conv2d_5'),
-          model.get_layer('conv2d_6')]
-
-# Define a model which gives the outputs of the layers
-
-layer_outputs = [layer.output for layer in layers]
-activation_model = keras.models.Model(inputs=model.input, outputs=layer_outputs)
-'''''
+matrix1, matrix2,history = prediction()
