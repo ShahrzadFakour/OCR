@@ -8,6 +8,9 @@ from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import confusion_matrix
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils.np_utils import to_categorical
+from keras.models import load_model
+import h5py
+import pickle
 import joblib
 import cv2
 # %matplotlib inline
@@ -49,11 +52,15 @@ def modify_dataset():
 
     # Plot a random image and its label
 
-    # plt.imshow(train_images[10529])
-    # plt.show()
+   # plt.imshow(train_images[10529])
+   # plt.show()
 
-    # print('Label: ', train_labels[10529])
+    #print('Label: ', train_labels[10529])
 
+    #plt.imshow(test_images[10529])
+   # plt.show()
+
+   # print('Label: ', test_labels[10529])
     # Convert train and test images into 'float64' type
 
     train_images = train_images.astype('float64')
@@ -67,6 +74,10 @@ def modify_dataset():
 
 
 def normalize():
+    """
+
+    :return:
+    """
     train_images, train_labels, test_images, test_labels = modify_dataset()
     # Normalize the images data
 
@@ -152,12 +163,27 @@ def create_model():
 def prediction():
     # Fit model in order to make predictions
     train_images, train_labels, test_images, test_labels = normalize()
-
     lb = LabelBinarizer()
     train_labels = lb.fit_transform(train_labels)
     test_labels = lb.fit_transform(test_labels)
-    print(train_labels.shape,'train')
-    print(test_labels.shape, 'test')
+    plt.imshow(train_images[529])
+    plt.show()
+
+    #print('Label: ', train_labels[529])
+
+    #plt.imshow(test_images[10529])
+    #plt.show()
+
+    #print('Label: ', test_labels[10529])
+
+    plt.imshow(train_images[10929])
+    plt.show()
+
+    #print('Label: ', train_labels[10929])
+    #plt.imshow(train_images[8929])
+   # plt.show()
+
+   # print('Label: ', train_labels[8929])
 
     X_train, X_val, y_train, y_val,test_labels = splitting_data()
     datagen = data_augmentation()
@@ -173,8 +199,11 @@ def prediction():
                                   epochs=10, validation_data=(X_val, y_val),
                                   callbacks=[early_stopping, model_checkpoint])
     # save the model to disk
-    #filename = 'finalized_model.sav'
-    #joblib.dump(history, filename)
+    #filename = 'finalized_model.pkl'
+    #with open(filename, 'wb') as file:
+    #    pickle.dump(model, file)
+    filename = 'finalized_model.h5'
+    model.save(filename)
     # Evaluate train and validation accuracies and losses
 
     train_acc = history.history['accuracy']
@@ -200,7 +229,7 @@ def prediction():
     plt.title('Epochs vs. Training and Validation Loss')
 
     #plt.show()
-    plt.savefig('Loss&Accuracy.png')
+    #plt.savefig('Loss&Accuracy.png')
     # Evaluate model on test data
     test_loss, test_acc = model.evaluate(x=test_images, y=test_labels, verbose=0)
 
@@ -212,7 +241,6 @@ def prediction():
     y_pred = model.predict(X_train)
     y_pred = lb.inverse_transform(y_pred, lb.classes_)
     y_train = lb.inverse_transform(y_train, lb.classes_)
-
     test_pred = model.predict(test_images)
     test_pred = lb.inverse_transform(test_pred, lb.classes_)
     test_labels = lb.inverse_transform(test_labels, lb.classes_)
@@ -236,7 +264,7 @@ def prediction():
     plt.title('Epochs vs. Training and Validation Loss')
 
     #plt.show()
-    plt.savefig('Loss&Accuracy.png')
+    #plt.savefig('Loss&Accuracy.png')
     matrix1 = confusion_matrix(y_train, y_pred, labels=lb.classes_)
 
     fig, ax = plt.subplots(figsize=(14, 12))
@@ -245,7 +273,7 @@ def prediction():
     plt.xlabel('Predicted label')
     plt.ylabel('True label')
     #plt.show()
-    plt.savefig('CM_train.png')
+    #plt.savefig('CM_train.png')
     #print(test_labels)
     matrix2 = confusion_matrix(test_labels, test_pred, labels=lb.classes_)
 
@@ -255,9 +283,8 @@ def prediction():
     plt.xlabel('Predicted label')
     plt.ylabel('True label')
     #plt.show()
-    plt.savefig('CM_test.png')
+    #plt.savefig('CM_test.png')
 
     return matrix1, matrix2, history
-
 
 matrix1, matrix2,history = prediction()
