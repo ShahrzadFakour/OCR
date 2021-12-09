@@ -4,9 +4,6 @@ import math
 from scipy import ndimage
 import pytesseract
 import os
-import re
-import datetime
-from datetime import date
 
 
 def using_tesseract():
@@ -16,27 +13,52 @@ def using_tesseract():
     if (os.name) == "nt":
         pytesseract.pytesseract.tesseract_cmd = r'C:\Users\shahr\anaconda3\envs\tesseract\Library\bin\tesseract.exe'
     return pytesseract.pytesseract.tesseract_cmd
-pytesseract.pytesseract.tesseract_cmd = using_tesseract()
 
+def load_model():
+    model = load_model('finalized_model_10Epoche.h5')
+    return model
 
+def capture():
+    cap = cv2.VideoCapture(0)
+    while(True):
+        # Capture frame-by-frame
+        #success, org_img = cap.read()
+        #img=np.asarray(org_img)
+        img=cv2.imread('C:/Users/shahr/Downloads/BusinessCard.jpg')
+        #print(frame)
+        #img=preProcessing(img)
+        cv2.imshow('frame',img)
+        #img = cv2.resize(img, (32, 32))
+        #img=img.reshape(1,32,32,3)
+        #print(img.shape)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-def img_preprossecing():
-    img = cv2.imread('C:/Users/shahr/Downloads/BusinessCard.jpg')
+    # When everything done, release the capture
+    cap.release()
+    cv2.destroyAllWindows()
+    return img
+
+def rotate_image():
+    #img = cv2.imread('C:/Users/shahr/Downloads/n.png')
     #cv2.imshow("Original", cv2.resize(img,(700,700)))
     #cv2.waitKey(0)
-    #img=cv2.resize(img,(500,500))
+    img=capture()
+    img=cv2.resize(img,(500,500))
+    #img=capture()
+    #print(img.dtype)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #cv2.imshow("Gray", gray)
-    #cv2.waitKey(0)
+    cv2.imshow("Gray", cv2.resize(gray,(700,700)))
+    cv2.waitKey(0)
     blur = cv2.GaussianBlur(gray, (7,7), 0)
-    #cv2.imshow("blur", blur)
-    #cv2.waitKey(0)
+    cv2.imshow("blur", cv2.resize(blur,(700,700)))
+    cv2.waitKey(0)
     edges = cv2.Canny(blur, 100, 100, apertureSize=3)
     #edges=cv2.bitwise_not(blur)
-    #cv2.imshow("edges", edges)
-    #cv2.waitKey(0)
+    cv2.imshow("edges", cv2.resize(edges,(700,700)))
+    cv2.waitKey(0)
     #thresh = cv2.threshold(edges, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    #cv2.imshow("thresh", thresh)
+    #cv2.imshow("threshold", thresh)
     #cv2.waitKey(0)
 
     lines = cv2.HoughLinesP(edges, 1, math.pi / 180.0, 100, minLineLength=100, maxLineGap=5)
@@ -59,37 +81,44 @@ def img_preprossecing():
     #cv2.waitKey(0)
     return img_rotated,median_angle
 
+def img_preprossecing():
+    img, median_angle=rotate_image()
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    #img=cv2.GaussianBlur(img, (7,7), 0)
+    #img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    cv2.imshow('processed image', cv2.resize(img, (700, 700)))
+    cv2.waitKey(0)
+    # img = cv2.Canny(img, 100, 100, apertureSize=3)
+    # cv2.imshow('canny', cv2.resize(img,(700,700)))
+    # cv2.waitKey(0)
+    print(img.shape)
+    return img
+
 
 def extract_data():
     """
     using Tesseract tries to read the date generated
     """
-    conf = " -c tessedit_create_boxfile=1"
+    pytesseract.pytesseract.tesseract_cmd = using_tesseract()
+    conf = " -c tessedit_create_boxfile=1 "
     text = str()
-    img,median_angle=img_preprossecing()
+    img=img_preprossecing()
     # print(date)
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    #img=cv2.GaussianBlur(img, (7,7), 0)
-    #img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    cv2.imshow('t', cv2.resize(img,(700,700)))
-    cv2.waitKey(0)
-    #img = cv2.Canny(img, 100, 100, apertureSize=3)
-    #cv2.imshow('canny', cv2.resize(img,(700,700)))
-    #cv2.waitKey(0)
-    print(img.shape)
+
     imgh, imgw= img.shape
-    boxes = pytesseract.image_to_boxes(img, config=conf)  # creates the boxes around each character
-    # print(boxes)
-    for b in boxes.splitlines():
-        b = b.split()
-        #print(b)
-        x, y, h, w = int(b[1]), int(b[2]), int(b[3]), int(b[4])
-        img = cv2.rectangle(img, (x, imgh - y), (h, imgh - w), (0, 255, 0), 2)
-        #cv2.putText(img, b[0], (x, imgh - y + 15), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0), 1)
-        if str(b[0]) == 'M':
-            pass
-        else:
-            text = text +' ' +str(b[0])
+    boxes = pytesseract.image_to_data(img, config=conf)  # creates the boxes around each character
+    #print(boxes)
+    for x, b in enumerate(boxes.splitlines()):
+        if x != 0:
+            b = b.split()
+            #print(b)
+            if len(b) == 12:
+                print(b)
+                x, y, w, h = int(b[6]), int(b[7]), int(b[8]), int(b[9])
+                #print(x, y, w, h)
+                img = cv2.rectangle(img, (x, y), (w + x, h + y), (0, 0, 255), 1)
+                #cv2.putText(img, b[11], (x, y + 20), cv2.FONT_HERSHEY_PLAIN, 1, (50, 50, 0), 1)
+                text=text+' '+ str(b[11])
     #date=re.search(r'\d[4].\d[2].\d[2]', text)
     #date=datetime.datetime.strptime(date.group(), '%Y-%m-%d').date()
     print(text)
@@ -99,4 +128,3 @@ def extract_data():
     cv2.waitKey(0)
     return img, text
 img,text=extract_data()
-
