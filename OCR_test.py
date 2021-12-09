@@ -55,44 +55,47 @@ while True:
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 '''''
+def capture():
+    cap = cv2.VideoCapture(0)
 
-cap = cv2.VideoCapture(0)
+    while(True):
+        # Capture frame-by-frame
+        #success, org_img = cap.read()
+        #img=np.asarray(org_img)
+        img=cv2.imread('C:/Users/shahr/Downloads/archive/EXP_10/6/6_11.png')
+        #print(frame)
+        img=preProcessing(img)
+        cv2.imshow('frame',img)
+        img = cv2.resize(img, (32, 32))
+        img=img.reshape(1,32,32,3)
+        #print(img.shape)
 
-while(True):
-    # Capture frame-by-frame
-    success, org_img = cap.read()
-    img=np.asarray(org_img)
-    #img=cv2.imread('C:/Users/shahr/Downloads/archive/EXP_10/0/0_5.png')
-    #print(frame)
-    img=preProcessing(img)
-    cv2.imshow('frame',img)
-    img = cv2.resize(img, (32, 32))
-    img=img.reshape(1,32,32,3)
-    #print(img.shape)
+        #### PREDICT
+        predictions= model.predict(img)
+        classIndex= np.argmax(predictions)+1
+        classNum= np.round(predictions).astype(int)
+        #predict_x = model.predict(img)
+        #classes_x = np.argmax(predict_x, axis=-1)
+        #classIndex = int(model.predict_classes(img))
+        #print(classIndex)
+        #print(classIndex)
+        #predictions = model.predict(img)
+        #print(predictions,'----')
+        probVal= np.amax(predictions)
+        print(classIndex,probVal,classNum)
 
-    #### PREDICT
-    predictions= model.predict(img)
-    classIndex= np.argmax(predictions,axis=1)
-    classNum= np.round(predictions).astype(int)
-    #predict_x = model.predict(img)
-    #classes_x = np.argmax(predict_x, axis=-1)
-    #classIndex = int(model.predict_classes(img))
-    #print(classIndex)
-    #print(classIndex)
-    #predictions = model.predict(img)
-    #print(predictions,'----')
-    probVal= np.amax(predictions)
-    print(classIndex,probVal,classNum)
+        if probVal> threshold:
+            #cv2.putText(img,str(classIndex) + "   "+str(probVal),
+             #        (50,50),cv2.FONT_HERSHEY_COMPLEX,
+              #      1,(0,0,255),1)
+            #classNum= np.argwhere(classIndex)
+            print(str(probVal),'predicted label:',classIndex)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-    if probVal> threshold:
-        #cv2.putText(img,str(classIndex) + "   "+str(probVal),
-         #        (50,50),cv2.FONT_HERSHEY_COMPLEX,
-          #      1,(0,0,255),1)
-        #classNum= np.argwhere(classIndex)
-        print(str(probVal),'predicted label:',classIndex)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+    # When everything done, release the capture
+    cap.release()
+    cv2.destroyAllWindows()
+    return probVal
 
-# When everything done, release the capture
-cap.release()
-cv2.destroyAllWindows()
+probVal=capture()
